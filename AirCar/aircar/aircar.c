@@ -1,9 +1,50 @@
+/*
+ * AirCar MarkII
+ *
+ * Tad Truex, F23
+ *
+ * Goals:
+ * 	At a minimum, replicate the existing 8051 firmware.  Ideally,
+ * 	modernize a bit, potentially adding additional sensors (accelerometer),
+ * 	possibly a small display, an RTC, and (hopefully) eliminate the need for
+ * 	9V battery.
+ *
+ * 	At a minimum
+ *
+ * 	1) Count the pulses from the rotary encoder.
+ * 	2) Accurately record the value every 28.2uS (CHECK)
+ * 	3) Appear as a USB-Drive when connected to a host.
+ *
+ * 	Status:
+ *
+ * 	9/21: Pulse counting works fine.  The encoder is 360 PPR.  2.5"-ish
+ * 	      diameter on a 16' track = 32 revolutions * 360 * 4 (quadrature) =
+ * 	      46080 counts WC.  Signed int32_t is plenty.
+ *
+ * 	      Question:  The lab handout says 40 PPR - did Doug divide down to
+ * 	      fit into an 8 bit number (it looks like the old data format is
+ * 	      delta rather than absolute)
+ *
+ *	TBD:
+ *		Establish a time base (I'm not even sure what clock rate the PiPico is
+ *		really running at.)
+ *
+ *		Establish USB mass storage device.
+ *
+ *		Disable the reset button.
+ *
+ *
+ *
+ *
+ */
+
+
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include <stdint.h>
+#include <stdio.h>
 
-void gpioInt( uint gpio, uint32_t eventMask );
 
 typedef struct _encoder {
 	uint leadPinNum;
@@ -31,6 +72,10 @@ void stateUpdate( uint gpio, uint32_t eventMask );
 
 
 int main() {
+
+	// Prepare for some cave man debugging
+	stdio_uart_init();
+
 	// Set the encoder pins to be inputs with no pullup/pulldown
 	//  (the encoder has the pullups)
 	gpio_init_mask(1<< encoder.lagPinNum | 1 << encoder.leadPinNum);
@@ -42,7 +87,12 @@ int main() {
     gpio_set_irq_enabled_with_callback(encoder.lagPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
     gpio_set_irq_enabled_with_callback(encoder.leadPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
 
-    while(1);
+
+    while(1){
+    	printf( "%d\r", pulseCount30p2>>2);
+    	for ( int i = 10000000; i > 0; i-- );
+    	printf( "                  \r");
+    }
 }
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
