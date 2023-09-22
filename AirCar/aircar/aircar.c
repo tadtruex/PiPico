@@ -19,7 +19,7 @@
  *	4) Add an oled display
  *	5) ??
  *
- * 	Status:
+ * 	Status: (Main status at https://github.com/users/tadtruex/projects/14)
  *
  * 	9/21: Pulse counting works fine.  The encoder is 360 PPR.  2.5"-ish
  * 	      diameter on a 16' track = 32 revolutions * 360 * 4 (quadrature) =
@@ -78,9 +78,19 @@ void stateUpdate( uint gpio, uint32_t eventMask );
 // Timer callback to sample the encoder data
 bool timerFunc( repeating_timer_t *rt );
 
+const uint led = PICO_DEFAULT_LED_PIN;
+
 int main() {
 
 	repeating_timer_t rt;
+
+	gpio_init(4);
+	gpio_set_dir(4, GPIO_OUT);
+	gpio_put(4,1);
+
+	gpio_init(led);
+	gpio_set_dir(led, GPIO_OUT);
+	gpio_put(led,1);
 
 	// Prepare for some cave man debugging
 	stdio_uart_init();
@@ -96,13 +106,10 @@ int main() {
     gpio_set_irq_enabled_with_callback(encoder.lagPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
     gpio_set_irq_enabled_with_callback(encoder.leadPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
 
-    add_repeating_timer_us( -28, timerFunc, NULL, &rt);
+    add_repeating_timer_us( 100, timerFunc, NULL, &rt);
 
-    while(1){
-    	printf( "%d\r", pulseCount30p2>>2);
-    	for ( int i = 10000000; i > 0; i-- );
-    	printf( "                  \r");
-    }
+    while(1);
+
 }
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
@@ -140,6 +147,9 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 }
 
 bool timerFunc( repeating_timer_t *rt ){
+	bool val = gpio_get(4);
+	gpio_put(4, !val );
+
 	return true;
 }
 
