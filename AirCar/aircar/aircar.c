@@ -46,7 +46,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
-
+#include "hardware/clocks.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -88,6 +88,8 @@ int main() {
 	gpio_set_dir(4, GPIO_OUT);
 	gpio_put(4,1);
 
+//    clock_gpio_init(21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, 10);
+
 	gpio_init(led);
 	gpio_set_dir(led, GPIO_OUT);
 	gpio_put(led,1);
@@ -106,9 +108,16 @@ int main() {
     gpio_set_irq_enabled_with_callback(encoder.lagPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
     gpio_set_irq_enabled_with_callback(encoder.leadPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
 
-    add_repeating_timer_us( 100, timerFunc, NULL, &rt);
+    // This is not cool.  Using -28 here causes the chip to hang.
+    //  Updating to -28 in the handler is fine.
+    add_repeating_timer_us( -100, timerFunc, NULL, &rt);
 
-    while(1);
+    while(1){
+    	int delay=2000000;
+    	bool ledState = gpio_get(led);
+    	while( delay-- );
+    	gpio_put(led, ledState ? 0 : 1 );
+    }
 
 }
 
@@ -150,6 +159,8 @@ bool timerFunc( repeating_timer_t *rt ){
 	bool val = gpio_get(4);
 	gpio_put(4, !val );
 
+	// This is a bug.  Not sure if it's hardware or software, but it's kinda gross.
+	rt->delay_us = -28;
 	return true;
 }
 
