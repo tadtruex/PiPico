@@ -15,6 +15,10 @@
  * 	2) Accurately record the value every 28.2uS (CHECK)
  * 	3) Appear as a USB-Drive when connected to a host.
  *
+ *	Extras
+ *	4) Add an oled display
+ *	5) ??
+ *
  * 	Status:
  *
  * 	9/21: Pulse counting works fine.  The encoder is 360 PPR.  2.5"-ish
@@ -42,6 +46,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -70,8 +75,12 @@ volatile uint32_t errorCount = 0;
 // Interrupt handler for the encoder pin changes
 void stateUpdate( uint gpio, uint32_t eventMask );
 
+// Timer callback to sample the encoder data
+bool timerFunc( repeating_timer_t *rt );
 
 int main() {
+
+	repeating_timer_t rt;
 
 	// Prepare for some cave man debugging
 	stdio_uart_init();
@@ -87,6 +96,7 @@ int main() {
     gpio_set_irq_enabled_with_callback(encoder.lagPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
     gpio_set_irq_enabled_with_callback(encoder.leadPinNum, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &stateUpdate);
 
+    add_repeating_timer_us( -28, timerFunc, NULL, &rt);
 
     while(1){
     	printf( "%d\r", pulseCount30p2>>2);
@@ -127,5 +137,9 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 
 	currentState = nextState;
 
+}
+
+bool timerFunc( repeating_timer_t *rt ){
+	return true;
 }
 
