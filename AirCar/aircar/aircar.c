@@ -47,6 +47,7 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/clocks.h"
+#include "hardware/pwm.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -84,9 +85,6 @@ int main() {
 
 	repeating_timer_t rt;
 
-	gpio_init(4);
-	gpio_set_dir(4, GPIO_OUT);
-	gpio_put(4,1);
 
 //    clock_gpio_init(21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, 10);
 
@@ -110,7 +108,21 @@ int main() {
 
     // This is not cool.  Using -28 here causes the chip to hang.
     //  Updating to -28 in the handler is fine.
-    add_repeating_timer_us( -100, timerFunc, NULL, &rt);
+    //add_repeating_timer_us( -100, timerFunc, NULL, &rt);
+
+    // Use PWM on GPIO 4 to generate 28.2us pulses
+    gpio_init(4);
+    gpio_set_function(4, GPIO_FUNC_PWM);
+    uint slice_num = pwm_gpio_to_slice_num(4);
+
+    // 125MHz cycle time for PWM clock.  3525 ticks gets us ~28.2us
+    pwm_set_wrap(slice_num, 3524);
+
+    // Set channel A output high for one cycle before dropping
+    pwm_set_chan_level(slice_num, PWM_CHAN_A, 2000);
+
+    // Set the PWM running
+    pwm_set_enabled(slice_num, true);
 
     while(1){
     	int delay=2000000;
