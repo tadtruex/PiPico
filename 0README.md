@@ -20,6 +20,9 @@ $ target extended-remote :3333
 
 Debug as usual.  sleep_ms does not seem to work.
 
-
+# set up a cut down version of pico sdk.
+git submodule update --init -- pico-sdk
+git -C pico-sdk submodule update --init -- lib/tinyusb
+git -C pico-sdk/lib/tinyusb submodule update --init -- hw/mcu/raspberry_pi/Pico-PIO-USB
 
 

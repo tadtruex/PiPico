@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.12)
 
 # Pull in SDK (must be before project)
+
+if (NOT PICO_SDK_PATH) 
+   set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/../pico-sdk")
+endif()
+
+if (NOT PICO_TINYUSB_PATH)
+   set(PICO_TINYUSB_PATH "${PICO_SDK_PATH}/lib/tinyusb")
+endif()
+
 include(pico_sdk_import.cmake)
 
 include(pico_extras_import_optional.cmake)

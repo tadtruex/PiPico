@@ -1,3 +1,5 @@
+add_subdirectory(usb)
+
 add_executable(aircar
         aircar.c
         )
