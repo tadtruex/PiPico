@@ -50,6 +50,10 @@
 #include <stdio.h>
 
 #include "bsp/board.h"
+#include <ff.h>
+#include <diskio.h>
+#include <disk.h>
+#include <ramdisk.h>
 
 
 typedef struct _encoder {
@@ -81,6 +85,10 @@ bool timerFunc( repeating_timer_t *rt );
 
 const uint led = PICO_DEFAULT_LED_PIN;
 
+int do_test(void);
+
+uint8_t pdisk[1<<15];
+
 int main() {
 
   board_init();
@@ -97,7 +105,9 @@ int main() {
   // init device stack on configured roothub port
   tud_init(BOARD_TUD_RHPORT);
 
-
+  initRamDisk();
+  
+  do_test();
 	
 	// Set the encoder pins to be inputs with no pullup/pulldown
 	//  (the encoder has the pullups)
