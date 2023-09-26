@@ -19,6 +19,7 @@
  *	4) Add an oled display
  *	5) ??
  *
+ *
  * 	Status: (Main status at https://github.com/users/tadtruex/projects/14)
  *
  * 	9/21: Pulse counting works fine.  The encoder is 360 PPR.  2.5"-ish
@@ -30,9 +31,6 @@
  * 	      delta rather than absolute)
  *
  *	TBD:
- *		Establish a time base (I'm not even sure what clock rate the PiPico is
- *		really running at.)
- *
  *		Establish USB mass storage device.
  *
  *		Disable the reset button.
@@ -50,6 +48,8 @@
 #include "hardware/pwm.h"
 #include <stdint.h>
 #include <stdio.h>
+
+#include "bsp/board.h"
 
 
 typedef struct _encoder {
@@ -83,8 +83,7 @@ const uint led = PICO_DEFAULT_LED_PIN;
 
 int main() {
 
-	repeating_timer_t rt;
-
+  board_init();
 
 //    clock_gpio_init(21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, 10);
 
@@ -95,6 +94,11 @@ int main() {
 	// Prepare for some cave man debugging
 	stdio_uart_init();
 
+  // init device stack on configured roothub port
+  tud_init(BOARD_TUD_RHPORT);
+
+
+	
 	// Set the encoder pins to be inputs with no pullup/pulldown
 	//  (the encoder has the pullups)
 	gpio_init_mask(1<< encoder.lagPinNum | 1 << encoder.leadPinNum);
@@ -125,10 +129,7 @@ int main() {
     pwm_set_enabled(slice_num, true);
 
     while(1){
-    	int delay=2000000;
-    	bool ledState = gpio_get(led);
-    	while( delay-- );
-    	gpio_put(led, ledState ? 0 : 1 );
+      tud_task();
     }
 
 }
