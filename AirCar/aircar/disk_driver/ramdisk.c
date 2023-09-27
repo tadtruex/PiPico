@@ -2,26 +2,23 @@
 #include "disk.h"
 #include "ramdisk.h"
 
-#define KBYTES_HERE 64
+#define NSECTORS 128
+#define SECTORBYTES 512
 
-BYTE ramDiskBuffer[KBYTES_HERE * 1024];
+BYTE ramDiskBuffer[NSECTORS][SECTORBYTES];
 
 
 DSTATUS rd_initialize(){ return 0; }
 DSTATUS rd_status(){ return 0; }
 
-DRESULT rd_read  (BYTE* buff, LBA_t sector, UINT count){ return RES_ERROR; }
-DRESULT rd_write (const BYTE* buff, LBA_t sector, UINT count){ return RES_ERROR; }
-
-
 DRESULT rd_ioctl (BYTE cmd, void* buff){
   switch (cmd) {
   case CTRL_SYNC: return RES_OK;
   case GET_SECTOR_COUNT:
-    *((LBA_t *)buff) = KBYTES_HERE * 2;
+    *((LBA_t *)buff) = NSECTORS;
     return RES_OK;
   case GET_SECTOR_SIZE:
-    *((WORD *)buff) = 512;
+    *((WORD *)buff) = SECTORBYTES;
     return RES_OK;
   case GET_BLOCK_SIZE:
     *((DWORD*)buff) = 1;
@@ -36,6 +33,32 @@ DRESULT rd_ioctl (BYTE cmd, void* buff){
   return RES_ERROR;
 }
 
+DRESULT rd_read(BYTE* buff, LBA_t sector, UINT count){
+  if ( sector + count < NSECTORS ) {
+    for ( LBA_t i = sector ; i < sector + count; i++ ){
+      for ( int j = 0; j < SECTORBYTES; j++ ){
+	*buff++ = ramDiskBuffer[i][j];
+      }
+    }
+    return RES_OK;
+  }
+      
+  return RES_ERROR;
+}
+
+
+DRESULT rd_write(const BYTE* buff, LBA_t sector, UINT count){
+  if ( sector + count < NSECTORS ) {
+    for ( LBA_t i = sector ; i < sector + count; i++ ){
+      for ( int j = 0; j < SECTORBYTES; j++ ){
+	ramDiskBuffer[i][j] = *buff++;
+      }
+    }
+    return RES_OK;
+  }
+      
+  return RES_ERROR;
+}
 const disk_desc RamDisk0 = {
   rd_initialize,
   rd_status,
@@ -47,7 +70,5 @@ const disk_desc RamDisk0 = {
 void initRamDisk(){
   ramDisk = &RamDisk0;
 }
-
-
 
 
