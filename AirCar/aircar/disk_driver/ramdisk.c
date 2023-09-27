@@ -2,7 +2,7 @@
 #include "disk.h"
 #include "ramdisk.h"
 
-#define NSECTORS 128
+#define NSECTORS 256
 #define SECTORBYTES 512
 
 BYTE ramDiskBuffer[NSECTORS][SECTORBYTES];

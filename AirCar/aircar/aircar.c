@@ -89,11 +89,19 @@ int do_test(void);
 
 uint8_t pdisk[1<<15];
 
+PARTITION VolToPart[FF_VOLUMES] = {
+			  {0,1},
+};
+
+uint32_t millis;
+
+void ledTask(uint32_t cycleTime);
+
 int main() {
 
+  uint32_t msPerLedCycle = 5000;
+  
   board_init();
-
-//    clock_gpio_init(21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, 10);
 
 	gpio_init(led);
 	gpio_set_dir(led, GPIO_OUT);
@@ -103,11 +111,33 @@ int main() {
 	stdio_uart_init();
 
   // init device stack on configured roothub port
-  tud_init(BOARD_TUD_RHPORT);
+	//  tud_init(BOARD_TUD_RHPORT);
 
   initRamDisk();
+
+  {
+    BYTE buf[FF_MAX_SS];
+    FATFS fs;
+    FIL fil;
+    
+    // Initialize the ram disk
+    if (f_fdisk(0, (LBA_t[]){100,0}, buf) ) msPerLedCycle = 200;
+
+    // Create a filesystem
+    if (f_mkfs( "0:", 0, buf, FF_MAX_SS ) ) msPerLedCycle = 200;
+
+    if (f_mount( &fs, "", 0 ) ) msPerLedCycle = 200;
+
+    if (f_open( &fil, "hello.txt", FA_CREATE_NEW | FA_WRITE )) msPerLedCycle = 200;
+
+    /* Write a message */
+    if (f_write(&fil, "Hello, World!\r\n", 15, NULL))  msPerLedCycle = 200;
+
+    /* Close the file */
+    f_close(&fil);
+  }
   
-  do_test();
+  //do_test();
 	
 	// Set the encoder pins to be inputs with no pullup/pulldown
 	//  (the encoder has the pullups)
@@ -139,7 +169,9 @@ int main() {
     pwm_set_enabled(slice_num, true);
 
     while(1){
-      tud_task();
+      millis = to_ms_since_boot( get_absolute_time() );
+      ledTask(msPerLedCycle);
+      //      tud_task();
     }
 
 }
@@ -177,6 +209,16 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 	currentState = nextState;
 
 }
+
+void ledTask( uint32_t msPerCycle ) {
+  static uint32_t lastMillis = 0;
+
+  if ( millis - lastMillis > msPerCycle>>2 ) {
+    lastMillis = millis;
+    gpio_put( led, !gpio_get(led) );
+  }
+}
+
 
 bool timerFunc( repeating_timer_t *rt ){
 	bool val = gpio_get(4);
