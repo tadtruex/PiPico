@@ -50,10 +50,12 @@
 #include <stdio.h>
 
 #include "bsp/board.h"
-#include <ff.h>
+#include "ff.h"
 #include <diskio.h>
 #include <disk.h>
 #include <ramdisk.h>
+
+#include "version.h"
 
 
 typedef struct _encoder {
@@ -119,6 +121,8 @@ int main() {
     BYTE buf[FF_MAX_SS];
     FATFS fs;
     FIL fil;
+
+    int n;
     
     // Initialize the ram disk
     if (f_fdisk(0, (LBA_t[]){100,0}, buf) ) msPerLedCycle = 200;
@@ -131,8 +135,9 @@ int main() {
     if (f_open( &fil, "hello.txt", FA_CREATE_NEW | FA_WRITE )) msPerLedCycle = 200;
 
     /* Write a message */
-    if (f_write(&fil, "Hello, World!\r\n", 15, NULL))  msPerLedCycle = 200;
-
+    n = sprintf( buf, "%s", _version_str );
+    f_write( &fil, buf, n, &n );
+    
     /* Close the file */
     f_close(&fil);
   }
