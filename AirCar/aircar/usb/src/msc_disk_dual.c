@@ -206,9 +206,6 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
 
   disk_read( pdev, buffer, lba, 1 );
   
-  //  uint8_t const* addr = msc_disk0[lba] + offset;
-  // memcpy(buffer, addr, bufsize);
-
   return (int32_t) bufsize;
 }
 
@@ -216,11 +213,7 @@ bool tud_msc_is_writable_cb (uint8_t lun)
 {
   (void) lun;
 
-#ifdef CFG_EXAMPLE_MSC_READONLY
-  return false;
-#else
   return true;
-#endif
 }
 
 // Callback invoked when received WRITE10 command.
@@ -232,6 +225,11 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   // out of ramdisk
   if ( lba >= DISK_BLOCK_NUM )
     return -1;
+  
+  if ( bufsize != 512 || offset != 0 )
+    return -1;
+
+  disk_write( pdev, buffer, lba, 1 );
   
   return (int32_t) bufsize;
 }
