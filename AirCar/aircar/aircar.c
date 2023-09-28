@@ -99,6 +99,7 @@ uint32_t millis;
 
 void ledTask(uint32_t cycleTime);
 
+void pwmInterrupt(void)
 int main() {
 
   uint32_t msPerLedCycle = 5000;
@@ -161,7 +162,10 @@ int main() {
 
     // Use PWM on GPIO 4 to generate 28.2us pulses
     gpio_init(4);
-    gpio_set_function(4, GPIO_FUNC_PWM);
+    gpio_set_function(4, GPIO_FUNC_SIO);
+    gpio_set_dir(4, GPIO_OUT);
+    gpio_put(4, 0);
+    
     uint slice_num = pwm_gpio_to_slice_num(4);
 
     // 125MHz cycle time for PWM clock.  3525 ticks gets us ~28.2us
@@ -170,6 +174,11 @@ int main() {
     // Set channel A output high for one cycle before dropping
     pwm_set_chan_level(slice_num, PWM_CHAN_A, 2000);
 
+    // We're going to need an interrupt for this
+    pwm_clear_irq(slice_num);
+    pwm_set_irq_enabled(slice_num, true);
+    irq_set_exclusive_handler( PWM_IRQ_WRAP, pwmInterrupt );
+    
     // Set the PWM running
     pwm_set_enabled(slice_num, true);
 
@@ -215,6 +224,12 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 
 }
 
+void pwmInterrupt( void ) {
+  pwm_clear_irq( pwm_gpio_to_slice_num(4) );
+  
+}
+
+  
 void ledTask( uint32_t msPerCycle ) {
   static uint32_t lastMillis = 0;
 
