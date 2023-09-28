@@ -111,7 +111,7 @@ int main() {
 	stdio_uart_init();
 
   // init device stack on configured roothub port
-	//  tud_init(BOARD_TUD_RHPORT);
+	tud_init(BOARD_TUD_RHPORT);
 
   initRamDisk();
 
@@ -171,7 +171,7 @@ int main() {
     while(1){
       millis = to_ms_since_boot( get_absolute_time() );
       ledTask(msPerLedCycle);
-      //      tud_task();
+      tud_task();
     }
 
 }

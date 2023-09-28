@@ -26,6 +26,9 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
+#include "ff.h"
+#include "diskio.h"
+
 #if CFG_TUD_MSC
 
 // When button is pressed, LUN1 will be set to not ready to simulate
@@ -37,9 +40,12 @@
 
 enum
 {
-  DISK_BLOCK_NUM  = 16, // 8KB is the smallest size that windows allow to mount
+  DISK_BLOCK_NUM  = 256, // 8KB is the smallest size that windows allow to mount
   DISK_BLOCK_SIZE = 512
 };
+
+// Cheesy, but easier to change later...
+BYTE pdev = 0;
 
 
 //--------------------------------------------------------------------+
@@ -54,7 +60,7 @@ issue at github.com/hathach/tinyusb"
 #ifdef CFG_EXAMPLE_MSC_READONLY
 const
 #endif
-uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
+uint8_t msc_disk0[16][DISK_BLOCK_SIZE] =
 {
   //------------- Block0: Boot Sector -------------//
   // byte_per_sector    = DISK_BLOCK_SIZE; fat12_sector_num_16  = DISK_BLOCK_NUM;
@@ -158,8 +164,9 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
 {
   (void) lun;
 
-  *block_count = DISK_BLOCK_NUM;
-  *block_size  = DISK_BLOCK_SIZE;
+  disk_ioctl( pdev, GET_SECTOR_SIZE, block_size );
+  disk_ioctl( pdev, GET_SECTOR_COUNT, block_count );
+  
 }
 
 // Invoked when received Start Stop Unit command
@@ -191,10 +198,16 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   (void) lun;
   
   // out of ramdisk
-  if ( lba >= DISK_BLOCK_NUM ) return -1;
+  if ( lba >= DISK_BLOCK_NUM )
+    return -1;
 
-  uint8_t const* addr = msc_disk0[lba] + offset;
-  memcpy(buffer, addr, bufsize);
+  if ( bufsize != 512 || offset != 0 )
+    return -1;
+
+  disk_read( pdev, buffer, lba, 1 );
+  
+  //  uint8_t const* addr = msc_disk0[lba] + offset;
+  // memcpy(buffer, addr, bufsize);
 
   return (int32_t) bufsize;
 }
@@ -217,7 +230,8 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   (void) lun;
   
   // out of ramdisk
-  if ( lba >= DISK_BLOCK_NUM ) return -1;
+  if ( lba >= DISK_BLOCK_NUM )
+    return -1;
   
   return (int32_t) bufsize;
 }
