@@ -82,9 +82,6 @@ volatile uint32_t errorCount = 0;
 // Interrupt handler for the encoder pin changes
 void stateUpdate( uint gpio, uint32_t eventMask );
 
-// Timer callback to sample the encoder data
-bool timerFunc( repeating_timer_t *rt );
-
 const uint led = PICO_DEFAULT_LED_PIN;
 
 int do_test(void);
@@ -95,11 +92,13 @@ PARTITION VolToPart[FF_VOLUMES] = {
 			  {0,1},
 };
 
+
 uint32_t millis;
 
 void ledTask(uint32_t cycleTime);
 
-void pwmInterrupt(void)
+void pwmInterrupt(void);
+
 int main() {
 
   uint32_t msPerLedCycle = 5000;
@@ -160,7 +159,7 @@ int main() {
     //  Updating to -28 in the handler is fine.
     //add_repeating_timer_us( -100, timerFunc, NULL, &rt);
 
-    // Use PWM on GPIO 4 to generate 28.2us pulses
+    // Use GPIO 4 (for now) as an indicator of interrupt entry.
     gpio_init(4);
     gpio_set_function(4, GPIO_FUNC_SIO);
     gpio_set_dir(4, GPIO_OUT);
@@ -178,10 +177,18 @@ int main() {
     pwm_clear_irq(slice_num);
     pwm_set_irq_enabled(slice_num, true);
     irq_set_exclusive_handler( PWM_IRQ_WRAP, pwmInterrupt );
+    irq_set_priority( PWM_IRQ_WRAP, 0 );
+    irq_set_enabled( PWM_IRQ_WRAP, true );
     
     // Set the PWM running
     pwm_set_enabled(slice_num, true);
 
+    for( int i = 0; i < 26; i++ ) {
+      if ( irq_is_enabled(i) ) {
+	printf( "IRQ %d: %d\n", i, irq_get_priority(i) );
+      }
+    }
+    
     while(1){
       millis = to_ms_since_boot( get_absolute_time() );
       ledTask(msPerLedCycle);
@@ -225,8 +232,10 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 }
 
 void pwmInterrupt( void ) {
+  static bool state = 0;
+  gpio_put( 4, !state );
   pwm_clear_irq( pwm_gpio_to_slice_num(4) );
-  
+  state = !state;
 }
 
   
@@ -239,13 +248,4 @@ void ledTask( uint32_t msPerCycle ) {
   }
 }
 
-
-bool timerFunc( repeating_timer_t *rt ){
-	bool val = gpio_get(4);
-	gpio_put(4, !val );
-
-	// This is a bug.  Not sure if it's hardware or software, but it's kinda gross.
-	rt->delay_us = -28;
-	return true;
-}
 
