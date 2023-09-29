@@ -75,6 +75,14 @@ const encoderT encoder = { 16, 17 };
 
 // Track the wheel rotations in a 30.2 format (quarter rotations)
 volatile int32_t pulseCount30p2 = 0;
+volatile int32_t nextRotationCount = 0x7fffffff;
+
+// This seems to be what the old aircar did.
+#define NUM_SAMPLES 800
+volatile int32_t SampleBuffer[NUM_SAMPLES];
+
+// Track the number of 28.2us pulses.
+volatile int32_t counterTicks = 0;
 
 // Track encoder errors
 volatile uint32_t errorCount = 0;
@@ -99,9 +107,11 @@ void ledTask(uint32_t cycleTime);
 
 void pwmInterrupt(void);
 
+uint32_t msPerLedCycle = 5000;
+
+
 int main() {
 
-  uint32_t msPerLedCycle = 5000;
   
   board_init();
 
@@ -174,23 +184,35 @@ int main() {
     pwm_set_chan_level(slice_num, PWM_CHAN_A, 2000);
 
     // We're going to need an interrupt for this
-    pwm_clear_irq(slice_num);
     pwm_set_irq_enabled(slice_num, true);
+
     irq_set_exclusive_handler( PWM_IRQ_WRAP, pwmInterrupt );
     irq_set_priority( PWM_IRQ_WRAP, 0 );
-    irq_set_enabled( PWM_IRQ_WRAP, true );
     
     // Set the PWM running
     pwm_set_enabled(slice_num, true);
+
+    pwm_clear_irq(slice_num);
+        irq_set_enabled(PWM_IRQ_WRAP, true);
 
     for( int i = 0; i < 26; i++ ) {
       if ( irq_is_enabled(i) ) {
 	printf( "IRQ %d: %d\n", i, irq_get_priority(i) );
       }
     }
+
+    msPerLedCycle = ~0;
+    printf("Main loop start\n");
     
     while(1){
       millis = to_ms_since_boot( get_absolute_time() );
+
+      // Start data collection after 1/4 rotation
+      if ( pulseCount30p2 > 90*4 && nextRotationCount == 0x7fffffff ) {
+	msPerLedCycle = 1000;
+	nextRotationCount = pulseCount30p2 + 36;  // Nine degrees counting 1/4 degrees
+	printf( "Sampling enabled\n" );
+      }
       ledTask(msPerLedCycle);
       tud_task();
     }
@@ -198,51 +220,68 @@ int main() {
 }
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
-	static uint currentState = 0;
-	static uint nextState = 0;
-	const uint32_t encMask = 1<<encoder.leadPinNum | 1 << encoder.lagPinNum;
 
-	nextState = gpio_get_all() & encMask;
+  static uint currentState = 0;
+  static uint nextState = 0;
+  static int sampleCount = 0;
+  static bool done = false;
 
-	switch (currentState) {
-	case Quadrant0 :
-		if (nextState == Quadrant1) { pulseCount30p2++; }
-		if (nextState == Quadrant2) { errorCount++; }
-		if (nextState == Quadrant3) { pulseCount30p2--; }
-		break;
-	case Quadrant1 :
-		if (nextState == Quadrant2) { pulseCount30p2++; }
-		if (nextState == Quadrant3) { errorCount++; }
-		if (nextState == Quadrant0) { pulseCount30p2--; }
-		break;
-	case Quadrant2 :
-		if (nextState == Quadrant3) { pulseCount30p2++; }
-		if (nextState == Quadrant0) { errorCount++; }
-		if (nextState == Quadrant1) { pulseCount30p2--; }
-		break;
-	case Quadrant3 :
-		if (nextState == Quadrant0) { pulseCount30p2++; }
-		if (nextState == Quadrant1) { errorCount++; }
-		if (nextState == Quadrant2) { pulseCount30p2--; }
-		break;
-	}
+  if ( !done ) {
+    const uint32_t encMask = 1<<encoder.leadPinNum | 1 << encoder.lagPinNum;
+  
+    nextState = gpio_get_all() & encMask;
+  
+    switch (currentState) {
+    case Quadrant0 :
+      if (nextState == Quadrant1) { pulseCount30p2++; }
+      if (nextState == Quadrant2) { errorCount++; }
+      if (nextState == Quadrant3) { pulseCount30p2--; }
+      break;
+    case Quadrant1 :
+      if (nextState == Quadrant2) { pulseCount30p2++; }
+      if (nextState == Quadrant3) { errorCount++; }
+      if (nextState == Quadrant0) { pulseCount30p2--; }
+      break;
+    case Quadrant2 :
+      if (nextState == Quadrant3) { pulseCount30p2++; }
+      if (nextState == Quadrant0) { errorCount++; }
+      if (nextState == Quadrant1) { pulseCount30p2--; }
+      break;
+    case Quadrant3 :
+      if (nextState == Quadrant0) { pulseCount30p2++; }
+      if (nextState == Quadrant1) { errorCount++; }
+      if (nextState == Quadrant2) { pulseCount30p2--; }
+      break;
+    }
 
-	currentState = nextState;
+    currentState = nextState;
 
+    if ( pulseCount30p2 > nextRotationCount ) {
+      SampleBuffer[sampleCount++] = counterTicks;
+      nextRotationCount += 36;  // 9 degrees
+      if ( sampleCount == NUM_SAMPLES ) {
+	done = true;
+	msPerLedCycle = 500;
+	printf( "Sampling complete\n");
+      }
+    }
+  }
 }
 
 void pwmInterrupt( void ) {
-  static bool state = 0;
-  gpio_put( 4, !state );
-  pwm_clear_irq( pwm_gpio_to_slice_num(4) );
-  state = !state;
+  //  counterTicks++;
+  //  gpio_put( 4, !gpio_get(4) );
 }
 
   
 void ledTask( uint32_t msPerCycle ) {
   static uint32_t lastMillis = 0;
 
-  if ( millis - lastMillis > msPerCycle>>2 ) {
+  if ( msPerCycle = 0 ) {
+    gpio_put(led, 0);
+  } else if ( msPerCycle = ~0 ) {
+    gpio_put(led, 1);
+  } else if ( millis - lastMillis > msPerCycle>>2 ) {
     lastMillis = millis;
     gpio_put( led, !gpio_get(led) );
   }
