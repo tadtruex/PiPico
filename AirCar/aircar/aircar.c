@@ -110,6 +110,14 @@ void pwmInterrupt(void);
 
 uint32_t msPerLedCycle = 5000;
 
+BYTE buf[FF_MAX_SS];
+
+void error( const char *buf ){
+  printf( "%s\n", buf );
+  while(1);
+}
+
+
 
 int main() {
 
@@ -129,7 +137,6 @@ int main() {
   initRamDisk();
 
   {
-    BYTE buf[FF_MAX_SS];
     FATFS fs;
     FIL fil;
 
@@ -190,11 +197,6 @@ int main() {
     irq_set_exclusive_handler( PWM_IRQ_WRAP, pwmInterrupt );
     irq_set_priority( PWM_IRQ_WRAP, 0 );
     
-    // Set the PWM running
-    pwm_set_enabled(slice_num, true);
-
-    pwm_clear_irq(slice_num);
-    irq_set_enabled(PWM_IRQ_WRAP, true);
 
     for( int i = 0; i < 26; i++ ) {
       if ( irq_is_enabled(i) ) {
@@ -212,13 +214,26 @@ int main() {
       if ( pulseCount30p2 > 90*4 && nextRotationCount == 0x7fffffff ) {
 	msPerLedCycle = 1000;
 	nextRotationCount = pulseCount30p2 + 36;  // Nine degrees counting 1/4 degrees
+	// Set the PWM running
+	counterTicks = 0;
+	pwm_set_enabled(slice_num, true);
+	pwm_clear_irq(slice_num);
+	irq_set_enabled(PWM_IRQ_WRAP, true);
+
 	printf( "Sampling enabled\n" );
       }
 
       if ( doWrite ) {
+	FIL f;
+	int n;
+	if (f_open( &f, "data.txt", FA_CREATE_NEW | FA_WRITE )) error( "File Open" );
+
 	for ( int i = 0; i < NUM_SAMPLES; i++ ) {
+	  n = sprintf( buf, "%d\n", SampleBuffer[i] );
+	  f_write( &f, buf, n, &n );
 	  printf( "%d\n", SampleBuffer[i] );
 	}
+	f_close(&f);
 	doWrite = false;
       }
       
@@ -265,7 +280,8 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
     currentState = nextState;
 
     if ( pulseCount30p2 > nextRotationCount ) {
-      SampleBuffer[sampleCount++] = counterTicks;
+      uint32_t oldSample = sampleCount ? SampleBuffer[sampleCount] : 0 ;
+      SampleBuffer[sampleCount++] = counterTicks - oldSample;
       nextRotationCount += 36;  // 9 degrees
       if ( sampleCount == NUM_SAMPLES ) {
 	done = true;
