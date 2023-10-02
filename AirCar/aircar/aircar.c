@@ -80,6 +80,7 @@ volatile int32_t nextRotationCount = 0x7fffffff;
 // This seems to be what the old aircar did.
 #define NUM_SAMPLES 800
 volatile int32_t SampleBuffer[NUM_SAMPLES];
+volatile bool doWrite = false;
 
 // Track the number of 28.2us pulses.
 volatile int32_t counterTicks = 0;
@@ -193,7 +194,7 @@ int main() {
     pwm_set_enabled(slice_num, true);
 
     pwm_clear_irq(slice_num);
-        irq_set_enabled(PWM_IRQ_WRAP, true);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
 
     for( int i = 0; i < 26; i++ ) {
       if ( irq_is_enabled(i) ) {
@@ -213,10 +214,17 @@ int main() {
 	nextRotationCount = pulseCount30p2 + 36;  // Nine degrees counting 1/4 degrees
 	printf( "Sampling enabled\n" );
       }
+
+      if ( doWrite ) {
+	for ( int i = 0; i < NUM_SAMPLES; i++ ) {
+	  printf( "%d\n", SampleBuffer[i] );
+	}
+	doWrite = false;
+      }
+      
       ledTask(msPerLedCycle);
       tud_task();
     }
-
 }
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
@@ -261,6 +269,7 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
       nextRotationCount += 36;  // 9 degrees
       if ( sampleCount == NUM_SAMPLES ) {
 	done = true;
+	doWrite = true;
 	msPerLedCycle = 500;
 	printf( "Sampling complete\n");
       }
@@ -269,17 +278,18 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 }
 
 void pwmInterrupt( void ) {
-  //  counterTicks++;
-  //  gpio_put( 4, !gpio_get(4) );
+  counterTicks++;
+  gpio_put( 4, !gpio_get(4) );
+  pwm_clear_irq(pwm_gpio_to_slice_num(4));
 }
 
   
 void ledTask( uint32_t msPerCycle ) {
   static uint32_t lastMillis = 0;
 
-  if ( msPerCycle = 0 ) {
+  if ( msPerCycle == 0 ) {
     gpio_put(led, 0);
-  } else if ( msPerCycle = ~0 ) {
+  } else if ( msPerCycle == ~0 ) {
     gpio_put(led, 1);
   } else if ( millis - lastMillis > msPerCycle>>2 ) {
     lastMillis = millis;
