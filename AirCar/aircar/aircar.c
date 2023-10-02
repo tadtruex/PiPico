@@ -97,9 +97,9 @@ int do_test(void);
 
 uint8_t pdisk[1<<15];
 
-PARTITION VolToPart[FF_VOLUMES] = {
-			  {0,1},
-};
+//PARTITION VolToPart[FF_VOLUMES] = {
+//			  {0,1},
+//};
 
 
 uint32_t millis;
@@ -117,7 +117,8 @@ void error( const char *buf ){
   while(1);
 }
 
-
+void initFS(void);
+FATFS fs;
 
 int main() {
 
@@ -135,35 +136,8 @@ int main() {
 	tud_init(BOARD_TUD_RHPORT);
 
   initRamDisk();
-
-  {
-    FATFS fs;
-    FIL fil;
-
-    int n;
-    
-    // Initialize the ram disk
-    if (f_fdisk(0, (LBA_t[]){100,0}, buf) ) msPerLedCycle = 200;
-
-    // Create a filesystem
-    if (f_mkfs( "0:", 0, buf, FF_MAX_SS ) ) msPerLedCycle = 200;
-
-    if (f_mount( &fs, "", 0 ) ) msPerLedCycle = 200;
-
-    if (f_open( &fil, "hello.txt", FA_CREATE_NEW | FA_WRITE )) msPerLedCycle = 200;
-
-    /* Write a message */
-    n = sprintf( buf, "%s", _version_str );
-    f_write( &fil, buf, n, &n );
-    
-    /* Close the file */
-    f_close(&fil);
-  }
+  initFS();
   
-  //do_test();
-	
-	// Set the encoder pins to be inputs with no pullup/pulldown
-	//  (the encoder has the pullups)
 	gpio_init_mask(1<< encoder.lagPinNum | 1 << encoder.leadPinNum);
 
 	// Remove this in production
@@ -226,20 +200,54 @@ int main() {
       if ( doWrite ) {
 	FIL f;
 	int n;
-	if (f_open( &f, "data.txt", FA_CREATE_NEW | FA_WRITE )) error( "File Open" );
+	int res;
+
+	// Samples are currently stored as raw counts.  Need to convert to delta to match original
+	//  firmware.
+	for ( int i = NUM_SAMPLES-1; i > 0 ; i-- ) SampleBuffer[i] -= SampleBuffer[i-1];
+	
+	if (f_mount( &fs, "", 0 ) ) error("MOUNT");
+	if ( (res=f_open( &f, "data.txt", FA_CREATE_ALWAYS | FA_WRITE ))) error( "File Open" );       
 
 	for ( int i = 0; i < NUM_SAMPLES; i++ ) {
 	  n = sprintf( buf, "%d\n", SampleBuffer[i] );
 	  f_write( &f, buf, n, &n );
-	  printf( "%d\n", SampleBuffer[i] );
+	  //	  printf( "%d\n", SampleBuffer[i] );
 	}
+	f_sync(&f);
 	f_close(&f);
+	printf("Closed and synced\n");
 	doWrite = false;
       }
       
       ledTask(msPerLedCycle);
       tud_task();
     }
+}
+
+void initFS(void) {
+
+    FIL fil;
+
+    int n;
+    
+    // Initialize the ram disk
+    //if (f_fdisk(0, (LBA_t[]){100,0}, buf) ) error("FDISK");
+
+    // Create a filesystem
+    if (f_mkfs( "", 0, buf, FF_MAX_SS ) ) error("MKFS");
+
+    if (f_mount( &fs, "", 0 ) ) error("MOUNT");
+
+    if (f_open( &fil, "hello.txt", FA_CREATE_NEW | FA_WRITE )) error("FOPEN");
+
+    /* Write a message */
+    n = sprintf( buf, "%s", _version_str );
+    f_write( &fil, buf, n, &n );
+    
+    /* Close the file */
+    f_close(&fil);
+    f_mount( 0, "", 0 );
 }
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
@@ -280,8 +288,7 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
     currentState = nextState;
 
     if ( pulseCount30p2 > nextRotationCount ) {
-      uint32_t oldSample = sampleCount ? SampleBuffer[sampleCount] : 0 ;
-      SampleBuffer[sampleCount++] = counterTicks - oldSample;
+      SampleBuffer[sampleCount++] = counterTicks;
       nextRotationCount += 36;  // 9 degrees
       if ( sampleCount == NUM_SAMPLES ) {
 	done = true;
