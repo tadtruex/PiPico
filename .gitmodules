@@ -7,3 +7,6 @@
 [submodule "AirCar/aircar/fatfs"]
 	path = AirCar/aircar/fatfs
 	url = git@github.com:tadtruex/fatfs
+[submodule "AirCar/kicad/KiCad-RP-Pico"]
+	path = AirCar/kicad/KiCad-RP-Pico
+	url = https://github.com/ncarandini/KiCad-RP-Pico.git
