@@ -63,14 +63,14 @@ typedef struct _encoder {
 	uint lagPinNum;
 } encoderT;
 
-const encoderT encoder = { 16, 17 };
+const encoderT encoder = { 17, 16 };
 
 
 // Gray coded transitions on the encoder.
-#define Quadrant0 ((uint32_t)0)
-#define Quadrant1 ((uint32_t)(1<<16))
-#define Quadrant2 ((uint32_t)(1<<16 | 1<<17))
-#define Quadrant3 ((uint32_t)(1<<17))
+#define Quadrant0 ((uint8_t)(0))
+#define Quadrant1 ((uint8_t)(2))
+#define Quadrant2 ((uint8_t)(3))
+#define Quadrant3 ((uint8_t)(1))
 
 
 // Track the wheel rotations in a 30.2 format (quarter rotations)
@@ -122,6 +122,12 @@ FATFS fs;
 
 int main() {
 
+  pulseCount30p2 = 0;
+  nextRotationCount = 0x7fffffff;
+  doWrite = false;
+  counterTicks = 0;
+  errorCount = 0;
+  
   
   board_init();
 
@@ -216,7 +222,7 @@ int main() {
 	}
 	f_sync(&f);
 	f_close(&f);
-	printf("Closed and synced\n");
+	printf("Closed and synced (%d errors)\n", errorCount);
 	doWrite = false;
       }
       
@@ -252,17 +258,19 @@ void initFS(void) {
 
 void stateUpdate( uint gpio, uint32_t eventMask ){
 
-  static uint currentState = 0;
-  static uint nextState = 0;
+  static uint8_t currentState = 0;
   static int sampleCount = 0;
   static bool done = false;
-
+  static int caveman = 4;
+  
   if ( !done ) {
-    const uint32_t encMask = 1<<encoder.leadPinNum | 1 << encoder.lagPinNum;
-  
-    nextState = gpio_get_all() & encMask;
-  
-    switch (currentState) {
+    uint8_t nextState = 0;
+    uint32_t pinState = gpio_get_all();
+    
+    nextState |= (pinState & (1<<encoder.lagPinNum))  ? 1 : 0 ;
+    nextState |= (pinState & (1<<encoder.leadPinNum)) ? 2 : 0 ;
+
+    switch ( currentState ) {
     case Quadrant0 :
       if (nextState == Quadrant1) { pulseCount30p2++; }
       if (nextState == Quadrant2) { errorCount++; }
@@ -287,6 +295,11 @@ void stateUpdate( uint gpio, uint32_t eventMask ){
 
     currentState = nextState;
 
+    if ( caveman ){
+      printf( "%d\n", currentState );
+      caveman--;
+    }
+    
     if ( pulseCount30p2 > nextRotationCount ) {
       SampleBuffer[sampleCount++] = counterTicks;
       nextRotationCount += 36;  // 9 degrees
