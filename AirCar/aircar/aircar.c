@@ -192,7 +192,7 @@ int main() {
 
       // Start data collection after 1/4 rotation
       if ( pulseCount30p2 > 90*4 && nextRotationCount == 0x7fffffff ) {
-	msPerLedCycle = 1000;
+	msPerLedCycle = 0;
 	nextRotationCount = pulseCount30p2 + 36;  // Nine degrees counting 1/4 degrees
 	// Set the PWM running
 	counterTicks = 0;
