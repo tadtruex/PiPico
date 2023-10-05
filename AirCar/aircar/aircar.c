@@ -30,11 +30,9 @@
  * 	      fit into an 8 bit number (it looks like the old data format is
  * 	      delta rather than absolute)
  *
- *	TBD:
- *		Establish USB mass storage device.
- *
- *		Disable the reset button.
- *
+ *      10/5: (V0.2) USB mass storage works fine.  It's a bit hokey because I only 
+ *            store data for 1 file in memory, and it will re-appear even if
+ *            it is deleted on the filesystem...  
  *
  *
  *
@@ -46,8 +44,10 @@
 #include "hardware/gpio.h"
 #include "hardware/clocks.h"
 #include "hardware/pwm.h"
+#include "hardware/flash.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <strings.h>
 
 #include "bsp/board.h"
 #include "ff.h"
@@ -79,7 +79,27 @@ volatile int32_t nextRotationCount = 0x7fffffff;
 
 // This seems to be what the old aircar did.
 #define NUM_SAMPLES 800
-volatile int32_t SampleBuffer[NUM_SAMPLES];
+
+// This is a bit of a magic number situation...
+//
+// We save the data in flash so it will be there in the event of an
+//  "accident".  The erasing size is 4KB, so this is
+// 1024 samples of uint32_t.  All a bit convoluted, but hopefully
+// easy to tweak later if we want.
+
+typedef uint32_t sample_t;
+#define maxSamples (FLASH_SECTOR_SIZE / sizeof(sample_t))
+
+volatile sample_t SampleBuffer[ maxSamples ];
+#define DATA_OFFSET ((2 * 1<<20) - sizeof(SampleBuffer))
+// We have 2MB (magic #) --+                 |
+// We store our data at the end -------------+
+
+#define DATA_START (uint8_t *)(XIP_BASE + DATA_OFFSET)
+//                                |
+// This is where flash starts ----+
+
+
 volatile bool doWrite = false;
 
 // Track the number of 28.2us pulses.
@@ -96,10 +116,6 @@ const uint led = PICO_DEFAULT_LED_PIN;
 int do_test(void);
 
 uint8_t pdisk[1<<15];
-
-//PARTITION VolToPart[FF_VOLUMES] = {
-//			  {0,1},
-//};
 
 
 uint32_t millis;
@@ -118,6 +134,7 @@ void error( const char *buf ){
 }
 
 void initFS(void);
+void writeDataFile( void );
 FATFS fs;
 
 int main() {
@@ -143,6 +160,9 @@ int main() {
 
   initRamDisk();
   initFS();
+
+  memcpy( (void *)SampleBuffer, DATA_START, sizeof( SampleBuffer ) );
+  writeDataFile();
   
 	gpio_init_mask(1<< encoder.lagPinNum | 1 << encoder.leadPinNum);
 
@@ -203,15 +223,33 @@ int main() {
 	printf( "Sampling enabled\n" );
       }
 
-      if ( doWrite ) {
+      if ( doWrite ) {	
+	uint32_t currentInterrupts;
+	
+	// Samples are currently stored as raw counts.  Need to convert to delta to match original
+	//  firmware.
+	for ( int i = NUM_SAMPLES-1; i > 0 ; i-- ) SampleBuffer[i] -= SampleBuffer[i-1];
+	writeDataFile();
+
+	// Copy the buffer to flash just in case
+	currentInterrupts = save_and_disable_interrupts();
+	flash_range_erase( DATA_OFFSET, sizeof(SampleBuffer) );
+	flash_range_program( DATA_OFFSET, (uint8_t *)SampleBuffer, sizeof(SampleBuffer) );
+	restore_interrupts(currentInterrupts);
+
+	doWrite = false;
+      }
+      
+      ledTask(msPerLedCycle);
+      tud_task();
+    }
+}
+
+void writeDataFile( void ) {
 	FIL f;
 	int n;
 	int res;
 
-	// Samples are currently stored as raw counts.  Need to convert to delta to match original
-	//  firmware.
-	for ( int i = NUM_SAMPLES-1; i > 0 ; i-- ) SampleBuffer[i] -= SampleBuffer[i-1];
-	
 	if (f_mount( &fs, "", 0 ) ) error("MOUNT");
 	if ( (res=f_open( &f, "data.txt", FA_CREATE_ALWAYS | FA_WRITE ))) error( "File Open" );       
 
@@ -223,12 +261,7 @@ int main() {
 	f_sync(&f);
 	f_close(&f);
 	printf("Closed and synced (%d errors)\n", errorCount);
-	doWrite = false;
-      }
-      
-      ledTask(msPerLedCycle);
-      tud_task();
-    }
+
 }
 
 void initFS(void) {

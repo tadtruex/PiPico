@@ -18,7 +18,7 @@ target_include_directories(aircar PUBLIC
 )
 
 # pull in common dependencies
-target_link_libraries(aircar pico_stdlib hardware_pwm tinyusb_device tinyusb_board)
+target_link_libraries(aircar pico_stdlib hardware_pwm tinyusb_device tinyusb_board hardware_flash)
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(aircar)
