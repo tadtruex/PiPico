@@ -30,11 +30,9 @@
  * 	      fit into an 8 bit number (it looks like the old data format is
  * 	      delta rather than absolute)
  *
- *	TBD:
- *		Establish USB mass storage device.
- *
- *		Disable the reset button.
- *
+ *      10/5: (V0.2) USB mass storage works fine.  It's a bit hokey because I only 
+ *            store data for 1 file in memory, and it will re-appear even if
+ *            it is deleted on the filesystem...  
  *
  *
  *
