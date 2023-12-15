@@ -64,11 +64,11 @@
       39,
       40
     ],
-    "visible_layers": "ffcffff_ffffffff",
+    "visible_layers": "fffffff_ffffffff",
     "zone_display_mode": 0
   },
   "meta": {
-    "filename": "AirCar-Proto.kicad_prl",
+    "filename": "AirCar.kicad_prl",
     "version": 3
   },
   "project": {
