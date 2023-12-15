@@ -55,7 +55,19 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "clearance|86147800|109759960|5757178a-1cd6-4597-8709-084f5317240b|02096721-f7bf-44fd-8ddf-028ce6882b8f",
+        "clearance|86147800|110709960|d847e0eb-93b4-401f-9e19-53eeb4577a76|02096721-f7bf-44fd-8ddf-028ce6882b8f",
+        "clearance|88197800|108359960|1176cd8b-88ee-4730-99c6-e3c9108567d5|02096721-f7bf-44fd-8ddf-028ce6882b8f",
+        "clearance|88197800|109309960|cd5665cc-3a3b-40b7-9679-aca7e14d954a|02096721-f7bf-44fd-8ddf-028ce6882b8f",
+        "clearance|88197800|110259960|27fdac89-9b09-4b52-b1c4-45a229b71dfe|02096721-f7bf-44fd-8ddf-028ce6882b8f",
+        "footprint_type_mismatch|114170000|133310000|5de50628-1bce-4ea6-9af8-69b5f447e1f1|00000000-0000-0000-0000-000000000000",
+        "silk_overlap|100150002|148501319|c17d710a-4a7d-4e3f-abd8-f201d6de8fad|7ade2016-fe2e-437c-8fbd-ac5e82573844",
+        "silk_overlap|116805104|114948523|7ababec9-51fb-4924-9cf9-09804ccec61f|394ea74e-c1bb-429d-9b5e-4ac2e6f6ebe7",
+        "silk_overlap|116805105|114159476|384d4fff-418a-4ac2-8a97-f38d2bf65c15|394ea74e-c1bb-429d-9b5e-4ac2e6f6ebe7",
+        "silk_overlap|118750001|148501319|7839a9b1-af18-4588-8873-5daad07cd57a|a06fb0a9-897f-4e99-8d04-41087a093d02",
+        "silk_overlap|80402200|132823419|0fe255db-73e8-4294-90c3-e2908dace806|42055912-313e-4659-a2ec-acd52b527d90"
+      ],
       "meta": {
         "version": 2
       },
@@ -424,7 +436,7 @@
     "classes": [
       {
         "bus_width": 12,
-        "clearance": 0.127,
+        "clearance": 0.2,
         "diff_pair_gap": 0.2032,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.127,
@@ -434,7 +446,7 @@
         "name": "Default",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.127,
+        "track_width": 0.2,
         "via_diameter": 0.35,
         "via_drill": 0.2,
         "wire_width": 6
