@@ -1539,7 +1539,6 @@
     )
   )
 
-
   (junction (at 73.66 138.43) (diameter 0) (color 0 0 0 0)
     (uuid 1dd15e7b-ee27-4119-aaf2-03b7bd99e2aa)
   )
@@ -3009,6 +3008,9 @@
     )
     (property "Datasheet" "TXU0104BQAR" (at 96.52 41.91 0)
       (effects (font (size 1.27 1.27) italic) hide)
+    )
+    (property "Vendor" "296-TXU0104BQARTR-ND" (at 99.06 63.5 0)
+      (effects (font (size 1.27 1.27)) hide)
     )
     (pin "1" (uuid 23bfaee1-4faa-4989-bd73-9ac8959ea519))
     (pin "10" (uuid 26bc5091-0a56-4b54-9add-0bc65b9ff469))
