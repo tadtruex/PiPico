@@ -34,6 +34,9 @@
  *            store data for 1 file in memory, and it will re-appear even if
  *            it is deleted on the filesystem...  
  *
+ *      1/4/24: Testing first prototypes back from manufacture.
+ *            Reduce turn on delay to better catch initial transients.
+ *            Reduce data collection by ~10%
  *
  *
  */
@@ -77,8 +80,12 @@ const encoderT encoder = { 17, 16 };
 volatile int32_t pulseCount30p2 = 0;
 volatile int32_t nextRotationCount = 0x7fffffff;
 
+// This system will start recording data after the encoder has
+// inidicated the wheels have rotate this many degrees.
+#define DEGREES_TO_START 45
+
 // This seems to be what the old aircar did.
-#define NUM_SAMPLES 800
+#define NUM_SAMPLES 720
 
 // This is a bit of a magic number situation...
 //
@@ -211,7 +218,7 @@ int main() {
       millis = to_ms_since_boot( get_absolute_time() );
 
       // Start data collection after 1/4 rotation
-      if ( pulseCount30p2 > 90*4 && nextRotationCount == 0x7fffffff ) {
+      if ( pulseCount30p2 > DEGREES_TO_START<<2 && nextRotationCount == 0x7fffffff ) {
 	msPerLedCycle = 0;
 	nextRotationCount = pulseCount30p2 + 36;  // Nine degrees counting 1/4 degrees
 	// Set the PWM running
